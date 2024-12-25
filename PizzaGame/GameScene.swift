@@ -47,9 +47,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
         
     private let toppingsConfig = [
-        ToppingConfig(name: "pineapple", size: CGSize(width: 100, height: 100), density: 2.0, restitution: 0.1, friction: 0.9),
-        ToppingConfig(name: "tomato", size: CGSize(width: 80, height: 80), density: 1.8, restitution: 0.1, friction: 0.85),
-        ToppingConfig(name: "olive", size: CGSize(width: 100, height: 100), density: 1.5, restitution: 0.1, friction: 0.8)
+        ToppingConfig(name: "pineapple", size: CGSize(width: 90, height: 90), density: 2.0, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "tomato", size: CGSize(width: 70, height: 70), density: 1.9, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "olive", size: CGSize(width: 100, height: 100), density: 1.8, restitution: 0.1, friction: 0.8),
+        ToppingConfig(name: "potato", size: CGSize(width: 100, height: 100), density: 2.0, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "cheeze", size: CGSize(width: 110, height: 110), density: 2.0, restitution: 0.1, friction: 0.8),
+        ToppingConfig(name: "chicken", size: CGSize(width: 120, height: 120), density: 2.0, restitution: 0.2, friction: 1.0),
+        ToppingConfig(name: "onion", size: CGSize(width: 110, height: 110), density: 1.9, restitution: 0.1, friction: 0.9)
     ]
     
     // MARK: - Scene Setup
@@ -66,11 +70,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.gravity = CGVector(dx: 0, dy: -5.0)
 //        physicsWorld.gravity = CGVector(dx: 0, dy: -9.8)
         
-        // 画面端に見えない壁を設置（当たり判定なし）
-        let frame = SKPhysicsBody(edgeLoopFrom: self.frame)
-        frame.categoryBitMask = 0 // カテゴリビットマスクを0に設定して当たり判定を無効化
-        frame.collisionBitMask = 0 // 衝突ビットマスクも0に設定
-        self.physicsBody = frame
+//        // 画面端に見えない壁を設置（当たり判定なし）
+//        let frame = SKPhysicsBody(edgeLoopFrom: self.frame)
+//        frame.categoryBitMask = 0 // カテゴリビットマスクを0に設定して当たり判定を無効化
+//        frame.collisionBitMask = 0 // 衝突ビットマスクも0に設定
+//        self.physicsBody = frame
+        // 画面全体の壁を廃止し、下端だけ物理ボディを作成
+        let bottomEdge = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: 0),
+                                       to: CGPoint(x: frame.width, y: 0))
+        bottomEdge.categoryBitMask = 0
+        bottomEdge.collisionBitMask = 0
+        self.physicsBody = bottomEdge
     }
     
     private func setupPizzaBase() {
@@ -147,17 +157,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 //        rightBoundary.physicsBody?.categoryBitMask = boundaryCategory
 //        rightBoundary.physicsBody?.friction = 0.5
 //        addChild(rightBoundary)
-        let leftBoundary = SKNode()
-        leftBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: 0), to: CGPoint(x: 0, y: frame.height))
-        leftBoundary.physicsBody?.categoryBitMask = boundaryCategory
-        leftBoundary.physicsBody?.friction = 0.5
-        addChild(leftBoundary)
-        
-        let rightBoundary = SKNode()
-        rightBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: frame.width, y: 0), to: CGPoint(x: frame.width, y: frame.height))
-        rightBoundary.physicsBody?.categoryBitMask = boundaryCategory
-        rightBoundary.physicsBody?.friction = 0.5
-        addChild(rightBoundary)
+//        let leftBoundary = SKNode()
+//        leftBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: 0), to: CGPoint(x: 0, y: frame.height))
+//        leftBoundary.physicsBody?.categoryBitMask = boundaryCategory
+//        leftBoundary.physicsBody?.friction = 0.5
+//        addChild(leftBoundary)
+//        
+//        let rightBoundary = SKNode()
+//        rightBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: frame.width, y: 0), to: CGPoint(x: frame.width, y: frame.height))
+//        rightBoundary.physicsBody?.categoryBitMask = boundaryCategory
+//        rightBoundary.physicsBody?.friction = 0.5
+//        addChild(rightBoundary)
     }
     
     // MARK: - Game Logic
@@ -195,8 +205,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         // 物理演算カテゴリの設定
         topping.physicsBody?.categoryBitMask = toppingCategory
-        topping.physicsBody?.contactTestBitMask = baseCategory | boundaryCategory
-        topping.physicsBody?.collisionBitMask = baseCategory | boundaryCategory | toppingCategory
+//        topping.physicsBody?.contactTestBitMask = baseCategory | boundaryCategory
+//        topping.physicsBody?.collisionBitMask = baseCategory | boundaryCategory | toppingCategory
+        topping.physicsBody?.contactTestBitMask = baseCategory
+        topping.physicsBody?.collisionBitMask = baseCategory | toppingCategory
         topping.physicsBody?.isDynamic = false
         
         // 初期回転角をランダムに設定
@@ -238,14 +250,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-//        guard let touch = touches.first else { return }
-//        let location = touch.location(in: self)
-//        
-//        if let topping = currentTopping, !topping.physicsBody!.isDynamic {
-//            initialTouchPosition = location
-//            lastRotationAngle = atan2(location.y - topping.position.y,
-//                                    location.x - topping.position.x)
-//        }
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
@@ -256,95 +260,105 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         if let topping = currentTopping, !topping.physicsBody!.isDynamic {
             initialTouchPosition = location
-            lastTouchPosition = location
-            touchMovementHistory.removeAll()
-            touchMovementHistory.append(location)
-            isRotationMode = false
+//            lastTouchPosition = location
+//            touchMovementHistory.removeAll()
+//            touchMovementHistory.append(location)
+//            isRotationMode = false
         }
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first,
               let topping = currentTopping,
-              !topping.physicsBody!.isDynamic,
-              let lastTouch = lastTouchPosition else { return }
+              //              !topping.physicsBody!.isDynamic,
+              //              let lastTouch = lastTouchPosition else { return }
+              !topping.physicsBody!.isDynamic else { return }
         
         let location = touch.location(in: self)
-        touchMovementHistory.append(location)
-        if touchMovementHistory.count > movementHistoryLimit {
-            touchMovementHistory.removeFirst()
-        }
-        
-        // 移動パターンの判定
-        if !isRotationMode {
-            isRotationMode = checkForRotationPattern()
-        }
+//        touchMovementHistory.append(location)
+//        if touchMovementHistory.count > movementHistoryLimit {
+//            touchMovementHistory.removeFirst()
+//        }
+//        
+//        // 移動パターンの判定
+//        if !isRotationMode {
+//            isRotationMode = checkForRotationPattern()
+//        }
         
         // 位置の更新（左右移動）
         topping.position.x = location.x
         
-        if isRotationMode {
-            // 回転モードの場合、回転を適用
-            let deltaX = location.x - lastTouch.x
-            let deltaY = location.y - lastTouch.y
-            let rotation = atan2(deltaY, deltaX)
-            topping.zRotation += rotation * 0.3 // 回転速度を調整
-        }
-        
-        lastTouchPosition = location
+//        if isRotationMode {
+//            // 回転モードの場合、回転を適用
+//            let deltaX = location.x - lastTouch.x
+//            let deltaY = location.y - lastTouch.y
+//            let rotation = atan2(deltaY, deltaX)
+//            topping.zRotation += rotation * 0.3 // 回転速度を調整
+//        }
+//        
+//        lastTouchPosition = location
     }
     
-    private func checkForRotationPattern() -> Bool {
-        guard touchMovementHistory.count >= 3 else { return false }
-        
-        // 移動パターンの分析
-        var totalVerticalMovement: CGFloat = 0
-        for i in 1..<touchMovementHistory.count {
-            let previousPoint = touchMovementHistory[i-1]
-            let currentPoint = touchMovementHistory[i]
-            totalVerticalMovement += abs(currentPoint.y - previousPoint.y)
-        }
-        
-        // 垂直方向の移動が閾値を超えていれば回転モードと判定
-        return totalVerticalMovement > rotationThreshold
-    }
+//    private func checkForRotationPattern() -> Bool {
+//        guard touchMovementHistory.count >= 3 else { return false }
+//        
+//        // 移動パターンの分析
+//        var totalVerticalMovement: CGFloat = 0
+//        for i in 1..<touchMovementHistory.count {
+//            let previousPoint = touchMovementHistory[i-1]
+//            let currentPoint = touchMovementHistory[i]
+//            totalVerticalMovement += abs(currentPoint.y - previousPoint.y)
+//        }
+//        
+//        // 垂直方向の移動が閾値を超えていれば回転モードと判定
+//        return totalVerticalMovement > rotationThreshold
+//    }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let topping = currentTopping {
-            if !topping.physicsBody!.isDynamic {
-                // 具材を落下させる
-                topping.physicsBody?.isDynamic = true
-                
-//                // わずかな初期回転力を加える
-//                if isRotationMode {
-//                    let smallTorque = CGFloat.random(in: -0.2...0.2)
-//                    topping.physicsBody?.applyTorque(smallTorque)
+//        if let topping = currentTopping {
+//            if !topping.physicsBody!.isDynamic {
+//                // 具材を落下させる
+//                topping.physicsBody?.isDynamic = true
+//                
+////                // わずかな初期回転力を加える
+////                if isRotationMode {
+////                    let smallTorque = CGFloat.random(in: -0.2...0.2)
+////                    topping.physicsBody?.applyTorque(smallTorque)
+////                }
+//                
+//                // 新しい具材を生成
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+//                    self.spawnNewTopping()
 //                }
-                
-                // 新しい具材を生成
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self.spawnNewTopping()
-                }
-                
-                score += 10
-            }
-        }
+//                
+//                score += 10
+//            }
+//        }
+//        
+//        initialTouchPosition = nil
+//        lastTouchPosition = nil
+//        touchMovementHistory.removeAll()
+//        isRotationMode = false
+        guard let topping = currentTopping,
+              !topping.physicsBody!.isDynamic else { return }
         
-        initialTouchPosition = nil
-        lastTouchPosition = nil
-        touchMovementHistory.removeAll()
-        isRotationMode = false
+        // 具材を落下させる
+        topping.physicsBody?.isDynamic = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.spawnNewTopping()
+        }
+        score += 10
     }
     
     // MARK: - Physics Contact
     func didBegin(_ contact: SKPhysicsContact) {
         let collision = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
         
-        if collision == (toppingCategory | boundaryCategory) {
-            // 具材が左右の境界に触れた場合、ゲームオーバー
-            gameOver = true
-            showGameOver()
-        }
+//        if collision == (toppingCategory | boundaryCategory) {
+//            // 具材が左右の境界に触れた場合、ゲームオーバー
+//            gameOver = true
+//            showGameOver()
+//        }
     }
     
     private func showGameOver() {
