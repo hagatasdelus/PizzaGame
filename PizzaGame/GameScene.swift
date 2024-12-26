@@ -2,7 +2,7 @@
 //  GameScene.swift
 //  PizzaGame
 //
-//  Created by 堀中　佳樹 on 2024/12/23.
+//  Created by 堀中　佳樹 on 2024/12/20.
 //
 
 import SpriteKit
@@ -47,14 +47,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
         
     private let toppingsConfig = [
-        ToppingConfig(name: "pineapple", size: CGSize(width: 90, height: 90), density: 2.0, restitution: 0.01, friction: 0.9),
-        ToppingConfig(name: "tomato", size: CGSize(width: 70, height: 70), density: 1.9, restitution: 0.01, friction: 0.9),
-        ToppingConfig(name: "olive", size: CGSize(width: 100, height: 100), density: 1.8, restitution: 0.01, friction: 0.8),
-        ToppingConfig(name: "potato", size: CGSize(width: 100, height: 100), density: 2.0, restitution: 0.01, friction: 0.9),
-        ToppingConfig(name: "cheeze", size: CGSize(width: 110, height: 110), density: 2.0, restitution: 0.01, friction: 0.8),
-        ToppingConfig(name: "chicken", size: CGSize(width: 120, height: 120), density: 2.0, restitution: 0.01, friction: 1.0),
-        ToppingConfig(name: "onion", size: CGSize(width: 110, height: 110), density: 1.9, restitution: 0.01, friction: 0.9)
+        ToppingConfig(name: "pineapple", size: CGSize(width: 90, height: 90), density: 3.0, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "tomato", size: CGSize(width: 70, height: 70), density: 2.9, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "olive", size: CGSize(width: 100, height: 100), density: 2.8, restitution: 0.1, friction: 0.8),
+        ToppingConfig(name: "potato", size: CGSize(width: 100, height: 100), density: 3.0, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "cheeze", size: CGSize(width: 110, height: 110), density: 3.0, restitution: 0.1, friction: 0.8),
+        ToppingConfig(name: "chicken", size: CGSize(width: 120, height: 120), density: 3.0, restitution: 0.1, friction: 1.0),
+        ToppingConfig(name: "onion", size: CGSize(width: 110, height: 110), density: 2.9, restitution: 0.1, friction: 0.9)
     ]
+    
+    // 画面遷移通知用のクロージャを追加
+    var onGameOver: (() -> Void)?
     
     // MARK: - Scene Setup
     override func didMove(to view: SKView) {
@@ -78,7 +81,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     private func setupPizzaBase() {
         let baseWidth = frame.width * 0.8
-        let baseHeight: CGFloat = 10
+        let baseHeight: CGFloat = 20
 
                 
         pizzaBase = SKSpriteNode(color: .brown, size: CGSize(width: baseWidth, height: baseHeight))
@@ -197,25 +200,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     override func update(_ currentTime: TimeInterval) {
         guard let topping = currentTopping,
                       topping.physicsBody?.isDynamic == true else { return }
-
-//        if let topping = currentTopping, topping.physicsBody?.isDynamic == true {
-//            if topping.position.y + topping.size.height / 2 < 0 {  // 完全に画面下へ落ちた
-//                if !gameOver {
-//                    gameOver = true
-//                    showGameOver()
-//                    self.isPaused = true
-//                }
-//            }
-//        }
-//        
-//        // 画面外に出た具材の位置を補正（左右の移動を可能に）
-//        if let topping = currentTopping, topping.physicsBody?.isDynamic == true {
-//            if topping.position.x < 0 {
-//                topping.position.x = frame.width
-//            } else if topping.position.x > frame.width {
-//                topping.position.x = 0
-//            }
-//        }
+        
         if !gameOver {
             for node in children {
                 if let topping = node as? SKSpriteNode,
@@ -247,8 +232,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first,
               let topping = currentTopping,
-              //              !topping.physicsBody!.isDynamic,
-              //              let lastTouch = lastTouchPosition else { return }
               !topping.physicsBody!.isDynamic else { return }
         
         let location = touch.location(in: self)
@@ -272,13 +255,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Physics Contact
     func didBegin(_ contact: SKPhysicsContact) {
         let collision = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
-        
-//        if collision == (toppingCategory | boundaryCategory) {
-//            // 具材が左右の境界に触れた場合、ゲームオーバー
-//            gameOver = true
-//            showGameOver()
-//        }
-//         ↓ boundaryCategory との衝突を検知してゲームオーバー
+//        boundaryCategory との衝突を検知してゲームオーバー
         if collision == (toppingCategory | boundaryCategory) {
             gameOver = true
             showGameOver()
@@ -287,20 +264,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     private func showGameOver() {
-        let gameOverLabel = SKLabelNode(fontNamed: "Arial")
-        gameOverLabel.text = "Game Over!"
-        gameOverLabel.fontSize = 48
-        gameOverLabel.position = CGPoint(x: frame.midX, y: frame.midY)
-        gameOverLabel.name = "gameOver"
-        addChild(gameOverLabel)
-        
-        // リスタートボタン
-        let restartButton = SKLabelNode(fontNamed: "Arial")
-        restartButton.text = "Tap to Restart"
-        restartButton.fontSize = 24
-        restartButton.position = CGPoint(x: frame.midX, y: frame.midY - 50)
-        restartButton.name = "restart"
-        addChild(restartButton)
+        onGameOver?()
     }
     
     // MARK: - Game Reset
@@ -308,7 +272,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // ゲームの状態をリセット
         gameOver = false
         score = 0
-//        scoreLabel.text = "Score: 0"
         self.isPaused = false
         
         // 既存の具材を削除
