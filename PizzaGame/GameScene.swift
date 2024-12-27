@@ -8,10 +8,9 @@
 import SpriteKit
 import GameplayKit
 
-// MARK: - GameScene
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
-    // MARK: - Properties
+    // Properties
     private var pizzaBase: SKSpriteNode!
     private var currentTopping: SKSpriteNode?
     private var gameOver = false
@@ -41,14 +40,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private struct ToppingConfig {
             let name: String
             let size: CGSize
-            let density: CGFloat  // 密度: より重いものは転がりにくい
+            let density: CGFloat  // 密度
             let restitution: CGFloat  // 反発係数: バウンドのしやすさ
             let friction: CGFloat  // 摩擦係数: 転がりやすさ
     }
         
     private let toppingsConfig = [
         ToppingConfig(name: "pineapple", size: CGSize(width: 90, height: 90), density: 3.0, restitution: 0.1, friction: 0.9),
-        ToppingConfig(name: "tomato", size: CGSize(width: 70, height: 70), density: 2.9, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "tomato", size: CGSize(width: 70, height: 70), density: 2.9, restitution: 0.1, friction: 2.0),
         ToppingConfig(name: "olive", size: CGSize(width: 100, height: 100), density: 2.8, restitution: 0.1, friction: 0.8),
         ToppingConfig(name: "potato", size: CGSize(width: 100, height: 100), density: 3.0, restitution: 0.1, friction: 0.9),
         ToppingConfig(name: "cheeze", size: CGSize(width: 110, height: 110), density: 3.0, restitution: 0.1, friction: 0.8),
@@ -57,9 +56,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     ]
     
     // 画面遷移通知用のクロージャを追加
-    var onGameOver: (() -> Void)?
+    var onGameOver: ((Int) -> Void)?
     
-    // MARK: - Scene Setup
+    // Scene Setup
     override func didMove(to view: SKView) {
         setupPhysicsWorld()
         setupPizzaBase()
@@ -87,26 +86,26 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         pizzaBase = SKSpriteNode(color: .brown, size: CGSize(width: baseWidth, height: baseHeight))
         pizzaBase.position = CGPoint(x: frame.midX, y: frame.height * 0.2)
         
-        // デコボコした地形を作成
-        let path = CGMutablePath()
-        let segmentCount = 40  // より細かい分割
-        let segmentWidth = baseWidth / CGFloat(segmentCount)
-        var points: [CGPoint] = []
+        // ピザ土台の形を変更
+//        let path = CGMutablePath()
+//        let segmentCount = 40  // より細かい分割
+//        let segmentWidth = baseWidth / CGFloat(segmentCount)
+//        var points: [CGPoint] = []
         
-        // より自然なデコボコを生成
-        for i in 0...segmentCount {
-            let x = CGFloat(i) * segmentWidth - baseWidth/2
-            // 最大2度の傾斜をランダムに生成
-            let angle = CGFloat.random(in: -2...2) * .pi / 180
-            let y = sin(angle) * 2  // 小さな起伏
-            points.append(CGPoint(x: x, y: y))
-        }
-        
-        // パスの生成
-        path.move(to: points[0])
-        for i in 1..<points.count {
-            path.addLine(to: points[i])
-        }
+//        // より自然なデコボコを生成
+//        for i in 0...segmentCount {
+//            let x = CGFloat(i) * segmentWidth - baseWidth/2
+//            // 最大2度の傾斜をランダムに生成
+//            let angle = CGFloat.random(in: -2...2) * .pi / 180
+//            let y = sin(angle) * 2  // 小さな起伏
+//            points.append(CGPoint(x: x, y: y))
+//        }
+//        
+//        // パスの生成
+//        path.move(to: points[0])
+//        for i in 1..<points.count {
+//            path.addLine(to: points[i])
+//        }
         
         // ピザ生地の物理特性
         pizzaBase.physicsBody = SKPhysicsBody(rectangleOf: pizzaBase.size)
@@ -120,9 +119,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     private func setupScoreLabel() {
-//        scoreLabel.text = "Score: 0"
         scoreLabel.fontSize = 24
-//        scoreLabel.position = CGPoint(x: frame.midX, y: frame.height - 50)
         scoreLabel.position = CGPoint(x: frame.midX, y: frame.height * 0.15)
         addChild(scoreLabel)
     }
@@ -150,20 +147,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         addChild(bottomLine)
     }
     
-    // MARK: - Game Logic
-    
     private func createToppingPhysicsBody(for texture: SKTexture, config: ToppingConfig) -> SKPhysicsBody {
             // テクスチャからアルファチャンネルに基づいて物理形状を生成
             let physicsBody = SKPhysicsBody(texture: texture, size: config.size)
             
             // 物理特性の設定
-            physicsBody.mass = 1.0 // 0.1
+            physicsBody.mass = 1.0
             physicsBody.density = config.density
             physicsBody.restitution = config.restitution
             physicsBody.friction = config.friction
             physicsBody.allowsRotation = true
-            physicsBody.angularDamping = 0.9 // 回転の減衰
-            physicsBody.linearDamping = 0.8 // 移動の減衰
+            physicsBody.angularDamping = 0.7 // 回転減衰
+            physicsBody.linearDamping = 0.6 // 移動減衰
 
             return physicsBody
         }
@@ -196,7 +191,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         addChild(topping)
     }
     
-    // MARK: - Touch Handling
     override func update(_ currentTime: TimeInterval) {
         guard let topping = currentTopping,
                       topping.physicsBody?.isDynamic == true else { return }
@@ -252,10 +246,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         score += 10
     }
     
-    // MARK: - Physics Contact
+    // Physics Contact
     func didBegin(_ contact: SKPhysicsContact) {
         let collision = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
-//        boundaryCategory との衝突を検知してゲームオーバー
+        //  boundaryCategoryとの衝突を検知してゲームオーバー
         if collision == (toppingCategory | boundaryCategory) {
             gameOver = true
             showGameOver()
@@ -264,10 +258,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     private func showGameOver() {
-        onGameOver?()
+        onGameOver?(score)
     }
     
-    // MARK: - Game Reset
+    // Game Reset
     private func resetGame() {
         // ゲームの状態をリセット
         gameOver = false
@@ -282,7 +276,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         // 新しい具材を生成
-//        spawnNewTopping()
         childNode(withName: "gameOver")?.removeFromParent()
         childNode(withName: "restart")?.removeFromParent()
         spawnNewTopping()

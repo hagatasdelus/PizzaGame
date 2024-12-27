@@ -8,29 +8,32 @@
 import SwiftUI
 
 struct GameView: View {
-    // ゲームオーバー時の遷移を通知するためのクロージャ
-    var onGameOver: (() -> Void)?
+    // 呼び出し元にゲームオーバーを通知するためのクロージャ
+    var onGameOver: ((Int) -> Void)?
     @State private var gameScene: GameScene?
     
     var body: some View {
         ZStack {
+            // ゲームシーンを表示
             if let scene = gameScene {
                 SpriteView(scene: scene)
                     .ignoresSafeArea()
             }
         }
         .onAppear {
+            // GameScene を生成してonGameOverクロージャをセット
             let scene = GameScene(size: UIScreen.main.bounds.size)
             scene.scaleMode = .aspectFill
-            // GameScene にクロージャを渡す
-            scene.onGameOver = {
-                onGameOver?()
+            // GameSceneにクロージャを渡す
+            scene.onGameOver = { score in
+                onGameOver?(score)
             }
             self.gameScene = scene
         }
     }
     
     private func resetGame() {
+        // ゲームをリセットして新しいシーンを用意
         let scene = GameScene(size: UIScreen.main.bounds.size)
         scene.scaleMode = .aspectFill
         self.gameScene = scene
