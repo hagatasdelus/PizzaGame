@@ -2,16 +2,15 @@
 //  GameScene.swift
 //  PizzaGame
 //
-//  Created by 堀中　佳樹 on 2024/12/23.
+//  Created by 堀中　佳樹 on 2024/12/20.
 //
 
 import SpriteKit
 import GameplayKit
 
-// MARK: - GameScene
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
-    // MARK: - Properties
+    // Properties
     private var pizzaBase: SKSpriteNode!
     private var currentTopping: SKSpriteNode?
     private var gameOver = false
@@ -41,18 +40,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private struct ToppingConfig {
             let name: String
             let size: CGSize
-            let density: CGFloat  // 密度: より重いものは転がりにくい
+            let density: CGFloat  // 密度
             let restitution: CGFloat  // 反発係数: バウンドのしやすさ
             let friction: CGFloat  // 摩擦係数: 転がりやすさ
     }
         
     private let toppingsConfig = [
-        ToppingConfig(name: "pineapple", size: CGSize(width: 100, height: 100), density: 2.0, restitution: 0.1, friction: 0.9),
-        ToppingConfig(name: "tomato", size: CGSize(width: 80, height: 80), density: 1.8, restitution: 0.1, friction: 0.85),
-        ToppingConfig(name: "olive", size: CGSize(width: 100, height: 100), density: 1.5, restitution: 0.1, friction: 0.8)
+        ToppingConfig(name: "pineapple", size: CGSize(width: 90, height: 90), density: 3.0, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "tomato", size: CGSize(width: 70, height: 70), density: 2.9, restitution: 0.1, friction: 2.0),
+        ToppingConfig(name: "olive", size: CGSize(width: 100, height: 100), density: 2.8, restitution: 0.1, friction: 0.8),
+        ToppingConfig(name: "potato", size: CGSize(width: 100, height: 100), density: 3.0, restitution: 0.1, friction: 0.9),
+        ToppingConfig(name: "cheeze", size: CGSize(width: 110, height: 110), density: 3.0, restitution: 0.1, friction: 0.8),
+        ToppingConfig(name: "chicken", size: CGSize(width: 120, height: 120), density: 3.0, restitution: 0.1, friction: 1.0),
+        ToppingConfig(name: "onion", size: CGSize(width: 110, height: 110), density: 2.9, restitution: 0.1, friction: 0.9)
     ]
     
-    // MARK: - Scene Setup
+    // 画面遷移通知用のクロージャを追加
+    var onGameOver: ((Int) -> Void)?
+    
+    // Scene Setup
     override func didMove(to view: SKView) {
         setupPhysicsWorld()
         setupPizzaBase()
@@ -64,56 +70,42 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private func setupPhysicsWorld() {
         physicsWorld.contactDelegate = self
         physicsWorld.gravity = CGVector(dx: 0, dy: -5.0)
-//        physicsWorld.gravity = CGVector(dx: 0, dy: -9.8)
-        
-        // 画面端に見えない壁を設置（当たり判定なし）
-        let frame = SKPhysicsBody(edgeLoopFrom: self.frame)
-        frame.categoryBitMask = 0 // カテゴリビットマスクを0に設定して当たり判定を無効化
-        frame.collisionBitMask = 0 // 衝突ビットマスクも0に設定
-        self.physicsBody = frame
+        // 画面全体の壁を廃止し、下端だけ物理ボディを作成
+        let bottomEdge = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: 0),
+                                       to: CGPoint(x: frame.width, y: 0))
+        bottomEdge.categoryBitMask = 0
+        bottomEdge.collisionBitMask = 0
+        self.physicsBody = bottomEdge
     }
     
     private func setupPizzaBase() {
         let baseWidth = frame.width * 0.8
-        let baseHeight: CGFloat = 10
-//        let baseHeight: CGFloat = 20
-        
+        let baseHeight: CGFloat = 20
+
                 
         pizzaBase = SKSpriteNode(color: .brown, size: CGSize(width: baseWidth, height: baseHeight))
         pizzaBase.position = CGPoint(x: frame.midX, y: frame.height * 0.2)
         
-//        // ピザ生地の物理形状を不規則な形に
+        // ピザ土台の形を変更
 //        let path = CGMutablePath()
-//        let pointsCount = 20
+//        let segmentCount = 40  // より細かい分割
+//        let segmentWidth = baseWidth / CGFloat(segmentCount)
 //        var points: [CGPoint] = []
-//        
-//        // 不規則な凸凹を生成
-//        for i in 0...pointsCount {
-//            let x = CGFloat(i) * (baseWidth / CGFloat(pointsCount)) - baseWidth/2
-//            let randomY = CGFloat.random(in: -2...2)
-//            points.append(CGPoint(x: x, y: randomY))
+        
+//        // より自然なデコボコを生成
+//        for i in 0...segmentCount {
+//            let x = CGFloat(i) * segmentWidth - baseWidth/2
+//            // 最大2度の傾斜をランダムに生成
+//            let angle = CGFloat.random(in: -2...2) * .pi / 180
+//            let y = sin(angle) * 2  // 小さな起伏
+//            points.append(CGPoint(x: x, y: y))
 //        }
-        
-        // デコボコした地形を作成
-        let path = CGMutablePath()
-        let segmentCount = 40  // より細かい分割
-        let segmentWidth = baseWidth / CGFloat(segmentCount)
-        var points: [CGPoint] = []
-        
-        // より自然なデコボコを生成
-        for i in 0...segmentCount {
-            let x = CGFloat(i) * segmentWidth - baseWidth/2
-            // 最大2度の傾斜をランダムに生成
-            let angle = CGFloat.random(in: -2...2) * .pi / 180
-            let y = sin(angle) * 2  // 小さな起伏
-            points.append(CGPoint(x: x, y: y))
-        }
-        
-        // パスの生成
-        path.move(to: points[0])
-        for i in 1..<points.count {
-            path.addLine(to: points[i])
-        }
+//        
+//        // パスの生成
+//        path.move(to: points[0])
+//        for i in 1..<points.count {
+//            path.addLine(to: points[i])
+//        }
         
         // ピザ生地の物理特性
         pizzaBase.physicsBody = SKPhysicsBody(rectangleOf: pizzaBase.size)
@@ -127,54 +119,47 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     private func setupScoreLabel() {
-//        scoreLabel.text = "Score: 0"
         scoreLabel.fontSize = 24
-//        scoreLabel.position = CGPoint(x: frame.midX, y: frame.height - 50)
         scoreLabel.position = CGPoint(x: frame.midX, y: frame.height * 0.15)
         addChild(scoreLabel)
     }
     
     private func setupBoundaries() {
-        // 左右の境界線（見えない壁）を設定
-//        let leftBoundary = SKNode()
-//        leftBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: 0), to: CGPoint(x: 0, y: frame.height))
-//        leftBoundary.physicsBody?.categoryBitMask = boundaryCategory
-//        leftBoundary.physicsBody?.friction = 0.5
-//        addChild(leftBoundary)
-//        
-//        let rightBoundary = SKNode()
-//        rightBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: frame.width, y: 0), to: CGPoint(x: frame.width, y: frame.height))
-//        rightBoundary.physicsBody?.categoryBitMask = boundaryCategory
-//        rightBoundary.physicsBody?.friction = 0.5
-//        addChild(rightBoundary)
-        let leftBoundary = SKNode()
-        leftBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: 0), to: CGPoint(x: 0, y: frame.height))
-        leftBoundary.physicsBody?.categoryBitMask = boundaryCategory
-        leftBoundary.physicsBody?.friction = 0.5
-        addChild(leftBoundary)
-        
-        let rightBoundary = SKNode()
-        rightBoundary.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: frame.width, y: 0), to: CGPoint(x: frame.width, y: frame.height))
-        rightBoundary.physicsBody?.categoryBitMask = boundaryCategory
-        rightBoundary.physicsBody?.friction = 0.5
-        addChild(rightBoundary)
+        let leftWall = SKNode()
+        leftWall.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: 0),
+                                             to: CGPoint(x: 0, y: frame.height * 0.2))
+        leftWall.physicsBody?.categoryBitMask = boundaryCategory
+        leftWall.physicsBody?.contactTestBitMask = toppingCategory
+        addChild(leftWall)
+
+        let rightWall = SKNode()
+        rightWall.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: frame.width, y: 0),
+                                              to: CGPoint(x: frame.width, y: frame.height * 0.2))
+        rightWall.physicsBody?.categoryBitMask = boundaryCategory
+        rightWall.physicsBody?.contactTestBitMask = toppingCategory
+        addChild(rightWall)
+
+        let bottomLine = SKNode()
+        bottomLine.physicsBody = SKPhysicsBody(edgeFrom: CGPoint(x: 0, y: -50),
+                                               to: CGPoint(x: frame.width, y: -50))
+        bottomLine.physicsBody?.categoryBitMask = boundaryCategory
+        bottomLine.physicsBody?.contactTestBitMask = toppingCategory
+        addChild(bottomLine)
     }
-    
-    // MARK: - Game Logic
     
     private func createToppingPhysicsBody(for texture: SKTexture, config: ToppingConfig) -> SKPhysicsBody {
             // テクスチャからアルファチャンネルに基づいて物理形状を生成
             let physicsBody = SKPhysicsBody(texture: texture, size: config.size)
             
             // 物理特性の設定
-            physicsBody.mass = 1.0 // 0.1
+            physicsBody.mass = 1.0
             physicsBody.density = config.density
             physicsBody.restitution = config.restitution
             physicsBody.friction = config.friction
             physicsBody.allowsRotation = true
-            physicsBody.angularDamping = 0.9 // 回転の減衰
-            physicsBody.linearDamping = 0.8 // 移動の減衰
-            
+            physicsBody.angularDamping = 0.7 // 回転減衰
+            physicsBody.linearDamping = 0.6 // 移動減衰
+
             return physicsBody
         }
     
@@ -195,8 +180,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         // 物理演算カテゴリの設定
         topping.physicsBody?.categoryBitMask = toppingCategory
-        topping.physicsBody?.contactTestBitMask = baseCategory | boundaryCategory
-        topping.physicsBody?.collisionBitMask = baseCategory | boundaryCategory | toppingCategory
+        topping.physicsBody?.contactTestBitMask = baseCategory
+        topping.physicsBody?.collisionBitMask = baseCategory | toppingCategory
         topping.physicsBody?.isDynamic = false
         
         // 初期回転角をランダムに設定
@@ -206,46 +191,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         addChild(topping)
     }
     
-    // MARK: - Touch Handling
-    
     override func update(_ currentTime: TimeInterval) {
-        // 画面下部からの落下チェック
-//        if let topping = currentTopping, topping.physicsBody?.isDynamic == true {
-//            if topping.position.y < 0 {  // 画面下部より下に行った場合
-//                gameOver = true
-//                showGameOver()
-//                self.isPaused = true  // ゲームを停止
-//            }
-//        }
-        if let topping = currentTopping, topping.physicsBody?.isDynamic == true {
-            if topping.position.y < 0 {  // 画面下部より下に行った場合
-                if !gameOver {
+        guard let topping = currentTopping,
+                      topping.physicsBody?.isDynamic == true else { return }
+        
+        if !gameOver {
+            for node in children {
+                if let topping = node as? SKSpriteNode,
+                   topping.physicsBody?.categoryBitMask == toppingCategory,
+                   topping.position.y + topping.size.height / 2 < 0 {
                     gameOver = true
                     showGameOver()
                     self.isPaused = true
+                    break
                 }
-            }
-        }
-        
-        // 画面外に出た具材の位置を補正（左右の移動を可能に）
-        if let topping = currentTopping, topping.physicsBody?.isDynamic == true {
-            if topping.position.x < 0 {
-                topping.position.x = frame.width
-            } else if topping.position.x > frame.width {
-                topping.position.x = 0
             }
         }
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-//        guard let touch = touches.first else { return }
-//        let location = touch.location(in: self)
-//        
-//        if let topping = currentTopping, !topping.physicsBody!.isDynamic {
-//            initialTouchPosition = location
-//            lastRotationAngle = atan2(location.y - topping.position.y,
-//                                    location.x - topping.position.x)
-//        }
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
@@ -256,120 +220,52 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         if let topping = currentTopping, !topping.physicsBody!.isDynamic {
             initialTouchPosition = location
-            lastTouchPosition = location
-            touchMovementHistory.removeAll()
-            touchMovementHistory.append(location)
-            isRotationMode = false
         }
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first,
               let topping = currentTopping,
-              !topping.physicsBody!.isDynamic,
-              let lastTouch = lastTouchPosition else { return }
+              !topping.physicsBody!.isDynamic else { return }
         
         let location = touch.location(in: self)
-        touchMovementHistory.append(location)
-        if touchMovementHistory.count > movementHistoryLimit {
-            touchMovementHistory.removeFirst()
-        }
-        
-        // 移動パターンの判定
-        if !isRotationMode {
-            isRotationMode = checkForRotationPattern()
-        }
         
         // 位置の更新（左右移動）
         topping.position.x = location.x
-        
-        if isRotationMode {
-            // 回転モードの場合、回転を適用
-            let deltaX = location.x - lastTouch.x
-            let deltaY = location.y - lastTouch.y
-            let rotation = atan2(deltaY, deltaX)
-            topping.zRotation += rotation * 0.3 // 回転速度を調整
-        }
-        
-        lastTouchPosition = location
-    }
-    
-    private func checkForRotationPattern() -> Bool {
-        guard touchMovementHistory.count >= 3 else { return false }
-        
-        // 移動パターンの分析
-        var totalVerticalMovement: CGFloat = 0
-        for i in 1..<touchMovementHistory.count {
-            let previousPoint = touchMovementHistory[i-1]
-            let currentPoint = touchMovementHistory[i]
-            totalVerticalMovement += abs(currentPoint.y - previousPoint.y)
-        }
-        
-        // 垂直方向の移動が閾値を超えていれば回転モードと判定
-        return totalVerticalMovement > rotationThreshold
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let topping = currentTopping {
-            if !topping.physicsBody!.isDynamic {
-                // 具材を落下させる
-                topping.physicsBody?.isDynamic = true
-                
-//                // わずかな初期回転力を加える
-//                if isRotationMode {
-//                    let smallTorque = CGFloat.random(in: -0.2...0.2)
-//                    topping.physicsBody?.applyTorque(smallTorque)
-//                }
-                
-                // 新しい具材を生成
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self.spawnNewTopping()
-                }
-                
-                score += 10
-            }
-        }
+        guard let topping = currentTopping,
+              !topping.physicsBody!.isDynamic else { return }
         
-        initialTouchPosition = nil
-        lastTouchPosition = nil
-        touchMovementHistory.removeAll()
-        isRotationMode = false
+        // 具材を落下させる
+        topping.physicsBody?.isDynamic = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.spawnNewTopping()
+        }
+        score += 10
     }
     
-    // MARK: - Physics Contact
+    // Physics Contact
     func didBegin(_ contact: SKPhysicsContact) {
         let collision = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
-        
+        //  boundaryCategoryとの衝突を検知してゲームオーバー
         if collision == (toppingCategory | boundaryCategory) {
-            // 具材が左右の境界に触れた場合、ゲームオーバー
             gameOver = true
             showGameOver()
+            self.isPaused = true
         }
     }
     
     private func showGameOver() {
-        let gameOverLabel = SKLabelNode(fontNamed: "Arial")
-        gameOverLabel.text = "Game Over!"
-        gameOverLabel.fontSize = 48
-        gameOverLabel.position = CGPoint(x: frame.midX, y: frame.midY)
-        gameOverLabel.name = "gameOver"
-        addChild(gameOverLabel)
-        
-        // リスタートボタン
-        let restartButton = SKLabelNode(fontNamed: "Arial")
-        restartButton.text = "Tap to Restart"
-        restartButton.fontSize = 24
-        restartButton.position = CGPoint(x: frame.midX, y: frame.midY - 50)
-        restartButton.name = "restart"
-        addChild(restartButton)
+        onGameOver?(score)
     }
     
-    // MARK: - Game Reset
+    // Game Reset
     private func resetGame() {
         // ゲームの状態をリセット
         gameOver = false
         score = 0
-//        scoreLabel.text = "Score: 0"
         self.isPaused = false
         
         // 既存の具材を削除
@@ -380,6 +276,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         // 新しい具材を生成
+        childNode(withName: "gameOver")?.removeFromParent()
+        childNode(withName: "restart")?.removeFromParent()
         spawnNewTopping()
     }
 }
